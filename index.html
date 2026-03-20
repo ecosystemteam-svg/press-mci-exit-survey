@@ -1189,12 +1189,10 @@ async function submitForm() {
 
   if (SURVEY_GAS_URL && SURVEY_GAS_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
     try {
-      const formData = new FormData();
-      formData.append('data', JSON.stringify(data));
-      await fetch(SURVEY_GAS_URL, {
-        method: 'POST',
+      const encoded = encodeURIComponent(JSON.stringify(data));
+      await fetch(`${SURVEY_GAS_URL}?action=submit&data=${encoded}`, {
+        method: 'GET',
         mode: 'no-cors',
-        body: formData,
       });
     } catch (e) {
       console.error('Submit error:', e);
