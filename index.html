@@ -1184,9 +1184,7 @@ async function submitForm() {
   const btn = document.getElementById('submitBtn');
   btn.textContent = 'กำลังส่ง...';
   btn.disabled = true;
-
   const data = collectData();
-
   if (SURVEY_GAS_URL && SURVEY_GAS_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
     try {
       const encoded = encodeURIComponent(JSON.stringify(data));
@@ -1197,11 +1195,7 @@ async function submitForm() {
     } catch (e) {
       console.error('Submit error:', e);
     }
-  } else {
-    console.log('Survey data (no GAS URL set):', data);
-    await new Promise(r => setTimeout(r, 800));
   }
-
   document.getElementById('page-4').classList.remove('active');
   document.getElementById('page-5').classList.add('active');
   updateProgress(5);
