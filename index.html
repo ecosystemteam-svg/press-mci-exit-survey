@@ -1169,7 +1169,7 @@ function collectData() {
     role: finalRoles.join(', '),
     ...ratings,
     mci_understand: get('mci_understand'),
-    action: getMulti('action').join(', '),
+    action_plan: getMulti('action').join(', '),
     channel: get('channel'),
     takeaway: getVal('takeaway'),
     collab: getMulti('collab').join(', '),
@@ -1187,8 +1187,12 @@ async function submitForm() {
   const data = collectData();
   if (SURVEY_GAS_URL && SURVEY_GAS_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
     try {
-      const encoded = encodeURIComponent(JSON.stringify(data));
-      await fetch(`${SURVEY_GAS_URL}?action=submit&data=${encoded}`, {
+      const params = new URLSearchParams();
+      params.append('action', 'submit');
+      for (const [k, v] of Object.entries(data)) {
+        params.append(k, v || '');
+      }
+      await fetch(SURVEY_GAS_URL + '?' + params.toString(), {
         method: 'GET',
         mode: 'no-cors',
       });
