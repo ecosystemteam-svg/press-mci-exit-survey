@@ -544,6 +544,21 @@
     transition: background 0.15s;
   }
   .btn-refresh:hover { background: rgba(255,255,255,0.3); }
+  .btn-delete-sel {
+    background: rgba(255,80,80,0.25);
+    border: 1px solid rgba(255,80,80,0.5);
+    color: #fff;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+    transition: background 0.15s;
+  }
+  .btn-delete-sel:hover { background: rgba(255,80,80,0.45); }
+  .cb-row { width: 18px; height: 18px; cursor: pointer; accent-color: #D4007A; }
+  .cb-all  { width: 18px; height: 18px; cursor: pointer; accent-color: #D4007A; }
 
   .dash-body {
     max-width: 1100px;
@@ -939,6 +954,7 @@
     </div>
     <div style="display:flex;gap:10px;align-items:center">
       <span class="topbar-meta" id="lastUpdate"></span>
+      <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()">🗑 ลบที่เลือก</button>
       <button class="btn-refresh" onclick="exportExcel()">⬇️ Export Excel</button>
       <button class="btn-refresh" onclick="hidAdmin()">← Survey</button>
       <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
@@ -1218,6 +1234,7 @@ const COLORS = {
   palette: ['#D4007A','#00AEEF','#9B0060','#007DB5','#F472B6','#38BDF8','#E879A0','#0EA5E9','#BE185D','#0284C7'],
 };
 
+Chart.register(ChartDataLabels);
 Chart.defaults.font.family = "'Sarabun', sans-serif";
 Chart.defaults.font.size = 13;
 
@@ -1352,7 +1369,9 @@ function renderDashboard(headers, rows) {
   document.getElementById('ratingBars').innerHTML = barsHtml;
 
   // ── Partner table ──
-  const partners = rows.filter(r => {
+  // Tag each row with its 1-based data index (for deletion)
+  const rowsWithIndex = rows.map((r, i) => { const o = r.slice ? [...r] : Object.assign({}, r); o._rowIndex = i + 1; return o; });
+  const partners = rowsWithIndex.filter(r => {
     const name  = r[hi('ชื่อ-นามสกุล')] || '';
     const phone = r[hi('เบอร์โทร')] || '';
     const email = r[hi('อีเมล')] || '';
@@ -1362,8 +1381,9 @@ function renderDashboard(headers, rows) {
   if (partners.length === 0) {
     document.getElementById('partnerTable').innerHTML = '<div class="empty-msg">ยังไม่มีรายชื่อ</div>';
   } else {
-    const rows_html = partners.map(r => `
-      <tr>
+    const rows_html = partners.map((r, i) => `
+      <tr data-idx="${r._rowIndex}">
+        <td><input type="checkbox" class="cb-row" value="${r._rowIndex}" onchange="updateDeleteBtn()"></td>
         <td>${r[hi('ชื่อ-นามสกุล')] || '-'}</td>
         <td>${r[hi('องค์กร')] || '-'}</td>
         <td>${r[hi('เบอร์โทร')] || '-'}</td>
@@ -1372,6 +1392,7 @@ function renderDashboard(headers, rows) {
     document.getElementById('partnerTable').innerHTML = `
       <table class="partner-table">
         <thead><tr>
+          <th><input type="checkbox" class="cb-all" onchange="toggleAllPartner(this)"></th>
           <th>ชื่อ</th><th>องค์กร</th><th>โทร</th><th>อีเมล</th>
         </tr></thead>
         <tbody>${rows_html}</tbody>
@@ -1418,10 +1439,27 @@ function makeBar(id, dataMap, horizontal = false) {
   const labels = Object.keys(dataMap);
   const values = Object.values(dataMap);
   const ctx = document.getElementById(id).getContext('2d');
+
+  // Wrap long labels at ~20 chars per line
+  const wrapLabel = (str, maxLen = 20) => {
+    if (str.length <= maxLen) return str;
+    const words = str.split(/\s+/);
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+      if ((cur + w).length > maxLen && cur.length) { lines.push(cur.trim()); cur = ''; }
+      cur += w + ' ';
+    });
+    if (cur.trim()) lines.push(cur.trim());
+    return lines;
+  };
+
+  const wrappedLabels = labels.map(l => wrapLabel(l, 22));
+
   charts[id] = new Chart(ctx, {
-    type: horizontal ? 'bar' : 'bar',
+    type: 'bar',
     data: {
-      labels,
+      labels: wrappedLabels,
       datasets: [{
         data: values,
         backgroundColor: COLORS.palette,
@@ -1431,13 +1469,75 @@ function makeBar(id, dataMap, horizontal = false) {
     },
     options: {
       indexAxis: horizontal ? 'y' : 'x',
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: horizontal ? 'end' : 'end',
+          align: horizontal ? 'end' : 'top',
+          color: '#555',
+          font: { weight: 'bold', size: 12 },
+          formatter: v => v
+        }
+      },
       scales: {
-        x: { grid: { display: false } },
-        y: { grid: { color: '#f0f0f0' } }
+        x: {
+          grid: { display: horizontal },
+          ticks: {
+            font: { size: 11 },
+            maxRotation: horizontal ? 0 : 30,
+            autoSkip: false
+          }
+        },
+        y: {
+          grid: { color: '#f0f0f0' },
+          ticks: {
+            font: { size: 11 },
+            autoSkip: false
+          }
+        }
+      },
+      layout: {
+        padding: { right: horizontal ? 40 : 10, top: 20 }
       }
     }
   });
+}
+
+function updateDeleteBtn() {
+  const checked = document.querySelectorAll('.cb-row:checked');
+  const btn = document.getElementById('btnDeleteSel');
+  if (btn) {
+    btn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+    btn.textContent = '🗑 ลบที่เลือก (' + checked.length + ')';
+  }
+}
+
+function toggleAllPartner(masterCb) {
+  document.querySelectorAll('.cb-row').forEach(cb => { cb.checked = masterCb.checked; });
+  updateDeleteBtn();
+}
+
+async function deleteSelected() {
+  const checked = Array.from(document.querySelectorAll('.cb-row:checked'));
+  if (!checked.length) return;
+  if (!confirm('ลบ ' + checked.length + ' รายการ?')) return;
+
+  const indexes = checked.map(cb => parseInt(cb.value));
+  try {
+    const url = ADMIN_GAS_URL +
+      '?action=deleteRows&pass=' + encodeURIComponent(PASS) +
+      '&indexes=' + encodeURIComponent(JSON.stringify(indexes));
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (json.status === 'ok') {
+      document.getElementById('btnDeleteSel').style.display = 'none';
+      loadData();
+    } else {
+      alert('ลบไม่ได้: ' + (json.message || 'error'));
+    }
+  } catch(err) {
+    alert('เชื่อมต่อไม่ได้');
+  }
 }
 
 function showError(msg) {
