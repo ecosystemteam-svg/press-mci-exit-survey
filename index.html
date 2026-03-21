@@ -557,7 +557,7 @@
     transition: background 0.15s;
   }
   .btn-delete-sel:hover { background: rgba(255,80,80,0.45); }
-  .cb-row { width: 18px; height: 18px; cursor: pointer; accent-color: #D4007A; }
+  .cb-row, .cb-resp { width: 18px; height: 18px; cursor: pointer; accent-color: #D4007A; }
   .cb-all  { width: 18px; height: 18px; cursor: pointer; accent-color: #D4007A; }
 
   .dash-body {
@@ -1458,7 +1458,7 @@ function renderResponsesTable(headers, rows) {
 
   const colIdx = showCols.map(c => headers.indexOf(c));
 
-  const thead = '<thead><tr><th><input type="checkbox" class="cb-all" onchange="toggleAllResp(this)"></th>' +
+  const thead = '<thead><tr><th><input type="checkbox" class="cb-all" onchange="toggleAllResp(this)" title="เลือกทั้งหมด"></th>' +
     showCols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead>';
 
   const tbody = '<tbody>' + rows.map((r, i) => {
@@ -1466,7 +1466,7 @@ function renderResponsesTable(headers, rows) {
       const v = ci >= 0 ? (r[ci] || '') : '';
       return '<td title="' + String(v).replace(/"/g,'&quot;') + '">' + String(v).substring(0, 40) + (String(v).length > 40 ? '…' : '') + '</td>';
     }).join('');
-    return '<tr><td><input type="checkbox" class="cb-row" value="' + (i+1) + '" onchange="updateDeleteBtn()"></td>' + cells + '</tr>';
+    return '<tr><td><input type="checkbox" class="cb-resp" value="' + (i+1) + '" onchange="updateDeleteBtn()"></td>' + cells + '</tr>';
   }).join('') + '</tbody>';
 
   section.innerHTML = '<table class="resp-table">' + thead + tbody + '</table>';
@@ -1474,7 +1474,7 @@ function renderResponsesTable(headers, rows) {
 }
 
 function toggleAllResp(masterCb) {
-  document.querySelectorAll('.cb-row').forEach(cb => { cb.checked = masterCb.checked; });
+  document.querySelectorAll('.cb-resp').forEach(cb => { cb.checked = masterCb.checked; });
   updateDeleteBtn();
 }
 
@@ -1588,7 +1588,7 @@ function makeBar(id, dataMap, horizontal = false) {
 }
 
 function updateDeleteBtn() {
-  const checked = document.querySelectorAll('.cb-row:checked');
+  const checked = document.querySelectorAll('.cb-resp:checked, .cb-row:checked');
   const btn = document.getElementById('btnDeleteSel');
   if (btn) {
     btn.style.display = checked.length > 0 ? 'inline-block' : 'none';
@@ -1602,7 +1602,7 @@ function toggleAllPartner(masterCb) {
 }
 
 async function deleteSelected() {
-  const checked = Array.from(document.querySelectorAll('.cb-row:checked'));
+  const checked = Array.from(document.querySelectorAll('.cb-resp:checked, .cb-row:checked'));
   if (!checked.length) return;
   if (!confirm('ลบ ' + checked.length + ' รายการ?')) return;
 
