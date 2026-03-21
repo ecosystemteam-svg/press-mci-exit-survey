@@ -694,6 +694,32 @@
   .partner-table tr:last-child td { border-bottom: none; }
   .partner-table tr:hover td { background: #fafafa; }
 
+  .resp-table-wrap { overflow-x: auto; }
+  .resp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .resp-table th {
+    background: var(--magenta-light, #F5D0E8);
+    color: var(--magenta);
+    padding: 9px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    position: sticky;
+    top: 0;
+  }
+  .resp-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .resp-table tr:last-child td { border-bottom: none; }
+  .resp-table tr:hover td { background: #fafafa; }
   .empty-msg {
     text-align: center;
     color: var(--muted);
@@ -956,8 +982,8 @@
       <span class="topbar-meta" id="lastUpdate"></span>
       <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()">🗑 ลบที่เลือก</button>
       <button class="btn-refresh" onclick="exportExcel()">⬇️ Export Excel</button>
-      <button class="btn-refresh" onclick="hidAdmin()">← Survey</button>
       <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
+      <button class="btn-refresh" onclick="doLogout()" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.3);">🚪 Logout</button>
     </div>
   </div>
 
@@ -1046,6 +1072,14 @@
         <div class="card">
           <h3><span class="dot"></span>รายชื่อ Partner ที่สนใจ</h3>
           <div id="partnerTable"></div>
+        </div>
+      </div>
+
+      <!-- Responses Table -->
+      <div class="chart-grid full" style="margin-top:20px" id="responsesSection">
+        <div class="card">
+          <h3><span class="dot"></span>รายการตอบทั้งหมด <span id="respCount" style="font-weight:400;color:var(--muted);font-size:13px"></span></h3>
+          <div class="resp-table-wrap" id="responsesTable"></div>
         </div>
       </div>
 
@@ -1368,6 +1402,9 @@ function renderDashboard(headers, rows) {
   }).join('');
   document.getElementById('ratingBars').innerHTML = barsHtml;
 
+  // ── Responses table ──
+  renderResponsesTable(headers, rows);
+
   // ── Partner table ──
   // Tag each row with its 1-based data index (for deletion)
   const rowsWithIndex = rows.map((r, i) => { const o = r.slice ? [...r] : Object.assign({}, r); o._rowIndex = i + 1; return o; });
@@ -1398,6 +1435,47 @@ function renderDashboard(headers, rows) {
         <tbody>${rows_html}</tbody>
       </table>`;
   }
+}
+
+// ── Responses Table ──
+function renderResponsesTable(headers, rows) {
+  const section = document.getElementById('responsesTable');
+  const countEl = document.getElementById('respCount');
+  if (!section) return;
+
+  if (!rows || rows.length === 0) {
+    section.innerHTML = '<div class="empty-msg">ยังไม่มีข้อมูล</div>';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  // Columns to show (compact set)
+  const showCols = ['Timestamp','NPS','เพศ','อายุ','บทบาท',
+    'Immersive Experience','Executive Talk','The Power of Synergy',
+    'hhc Audiobook','Beyond Forgetting','Workshop: Gallery of Memory','The Botanical House',
+    'ความเข้าใจ MCI','แผนหลังงาน','ช่องทางสื่อสาร','สนใจความร่วมมือ',
+    'ชื่อ-นามสกุล','องค์กร','เบอร์โทร','อีเมล'];
+
+  const colIdx = showCols.map(c => headers.indexOf(c));
+
+  const thead = '<thead><tr><th><input type="checkbox" class="cb-all" onchange="toggleAllResp(this)"></th>' +
+    showCols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead>';
+
+  const tbody = '<tbody>' + rows.map((r, i) => {
+    const cells = colIdx.map(ci => {
+      const v = ci >= 0 ? (r[ci] || '') : '';
+      return '<td title="' + String(v).replace(/"/g,'&quot;') + '">' + String(v).substring(0, 40) + (String(v).length > 40 ? '…' : '') + '</td>';
+    }).join('');
+    return '<tr><td><input type="checkbox" class="cb-row" value="' + (i+1) + '" onchange="updateDeleteBtn()"></td>' + cells + '</tr>';
+  }).join('') + '</tbody>';
+
+  section.innerHTML = '<table class="resp-table">' + thead + tbody + '</table>';
+  if (countEl) countEl.textContent = '(' + rows.length + ' รายการ)';
+}
+
+function toggleAllResp(masterCb) {
+  document.querySelectorAll('.cb-row').forEach(cb => { cb.checked = masterCb.checked; });
+  updateDeleteBtn();
 }
 
 // ── Chart helpers ──
@@ -1562,6 +1640,16 @@ function showAdmin() {
   document.querySelector('.progress-wrap').style.display = 'none';
   document.querySelector('.container').style.display = 'none';
 }
+function doLogout() {
+  PASS = '';
+  document.getElementById('dashboard').style.display  = 'none';
+  document.getElementById('loginWrap').style.display  = 'flex';
+  document.getElementById('userInput').value = '';
+  document.getElementById('passInput').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('btnDeleteSel').style.display = 'none';
+}
+
 function hidAdmin() {
   document.getElementById('adminWrap').style.display = 'none';
   document.querySelector('.header').style.display = 'block';
