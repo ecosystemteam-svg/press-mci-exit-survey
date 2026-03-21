@@ -1559,18 +1559,24 @@ function makeBar(id, dataMap, horizontal = false) {
       },
       scales: {
         x: {
+          beginAtZero: true,
           grid: { display: horizontal },
           ticks: {
             font: { size: 11 },
             maxRotation: horizontal ? 0 : 30,
-            autoSkip: false
+            autoSkip: false,
+            stepSize: 1,
+            callback: function(v) { return Number.isInteger(v) ? v : null; }
           }
         },
         y: {
+          beginAtZero: true,
           grid: { color: '#f0f0f0' },
           ticks: {
             font: { size: 11 },
-            autoSkip: false
+            autoSkip: false,
+            stepSize: 1,
+            callback: function(v) { return Number.isInteger(v) ? v : null; }
           }
         }
       },
